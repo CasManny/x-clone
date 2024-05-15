@@ -1,92 +1,109 @@
-import mongoose from "mongoose";
-import express from 'express'
+import User from "./models/userModel.js"
 import jwt from 'jsonwebtoken'
-import User from "./models/userModel";
+import mongoose, { mongo } from "mongoose"
+import bcrypt from 'bcryptjs'
 
-const app = express()
-const port = process.env.PORT || 5000
-
-
-
-const connectDB = async () => {
+const getUserProfile = async (req, res) => {
     try {
-        const conn = await mongoose.connect(process.env.MONGODB_URL)
-        console.log(`MongoDB connected to host ${conn.connection.host}`)
+        const { username } = req.params
+        const user = await User.findOne({username}).select("-password")
+        if(!user) {
+            return res.status(404).json({error: "User not found"})
+        }
+        res.status(200).json(user)
     } catch (error) {
-        console.log(`Problem connecting to mongodb ${error.message}`)
-        process.exit(1)
+        console.log(`Error in practice js: ${error.message}`)
+        res.status(500).json({error: "Internal Server Error"})
     }
 }
 
-app.listen(port, () => {
-    console.log(`Server is listening on port ${port}`)
-    connectDB()
-})
+const followUnfollowUser = async (req, res) => {
+    try {
+        const { id } = req.params
+        const userToModify = await User.findById({id})
+        const currentUser = await User.findById(req.user._id)
 
-const generateTokenAndSetCookies = (userId, res) =>{
-    const token = jwt.sign({userId}, process.env.JWT_SECRET, {expiresIn: '15d'})
+        if(id === req.user._id) {
+            return res.status(401).json({error: "You cannot follow or unfollow yourself"})
+        }
 
-    res.cookie('jwt', token, {
-        maxAge: 15*24*60*60*1000,
-        httponly: true,
-        sameSite: 'strict',
-        secure: process.env.NODE_ENV !== 'development'
-    })
+        if(!currentUser || !userToModify) {
+            return res.status(404).json({error: "user not found"})
+        }
+
+        const isFollowing = currentUser.following.includes(id)
+
+        if(isFollowing) {
+            // unfollow user
+            await User.findByIdAndUpdate(id, {$pull: { followers: req.user._id}})
+            await User.findByIdAndUpdate(req.user._id, {$pull: {following: id}})
+        } else {
+            // follow user
+            await User.findByIdAndUpdate(id, {$push: { followers: req.user._id}})
+            await User.findByIdAndUpdate(req.user._id, {$push: {following: id}})
+        }
+        
+    } catch (error) {
+        console.log(`Error in practice js controller: ${error.message}`)
+        res.status(500).json({error: "Internal Server Error"})
+    }
 }
 
-const protectedRoute = async (req, res, next) => {
+const protectedroute = async (req, res, next) => {
     try {
         const token = req.cookie.jwt
         if(!token) {
-            return res.status(401).json({error: "Unauthorized: No token provided"})
+            return res.status(404).json({error: "Unauthorized: No token found"})
         }
-        const decoded = jwt.verify(token, process.env.JWT_SECRET)
-        if(!decoded) {
-            res.status(401).json({error: 'Unauthorized: No valid token'})
+        const decode = jwt.verify(token, process.env.JWT_SECRET)
+        if(!decode) {
+            return res.status(404).json({error: "Unauthorized: No token found"})
         }
-        const user = await User.findById(decoded.userId).select('-password')
+        const user = await User.findById(decode.userId).select("-password")
         if(!user) {
-            res.status(404).json({error: "User not found"})
+            return res.status(404).json({error: "No user found"})
         }
-
+        
         req.user = user
         next()
-        
     } catch (error) {
-       console.log(`Error in protectRoute controller ${error.message}`) 
-       res.status(500).json({error: 'Internal server error'})
-    }
-}
-
-const loginUser = async (req, res, next) => {
-    const { username, password } = req.body
-    const user = await User.findOne({username})
-    const isPasswordCorrect = await bcrypt.compare(password, user?.password || '')
-
-    if(!user || !isPasswordCorrect) {
-        res.status(400).json({error: "Invalid username or password"})
-    }
-
-    generateTokenAndSetCookies(user._id, res)
-    res.status(200).json({
-        _id: user._id,
-        fullname: user.fullname,
-        username: user.username,
-        email: user.email,
-        followers: user.followers,
-        profileImg: user.profileImg,
-        coverImg: user.coverImg
-    })
-
-}
-
-const logoutUser = (req, res, next) => {
-    try {
-        res.cookie('jwt', '', {maxAge: 0})
-        res.status(500).json({msg: "successfully logged out"})
-        
-    } catch (error) {
-        console.log(`Error in logout controller ${error.message}`)
+        console.log(`Error in protectedroute controller: ${error.message}`)
         res.status(500).json({error: "Internal Server error"})
+
     }
+}
+
+const getSuggestedUsers = async (req, res) => {
+    try {
+        const userId = req.user._id
+        const usersFollowedByMe = await User.findById(userId).select('following')
+
+        const usersInDB = await User.aggregate([
+            {
+                $match: {
+                    $ne: userId
+                }
+            },
+            {
+                $sample: {
+                    size: 10
+                }
+            }
+        ])
+
+        const filteredUsers = usersInDB.filter((user) => !usersFollowedByMe.following.includes(user._id))
+
+        const suggestedUsers = filteredUsers.slice(0, 4)
+        suggestedUsers.forEach((user) => user.password = null)
+        res.status(200).json(suggestedUsers)
+        
+    } catch (error) {
+        console.log(`Error in practice controller: ${error.message}`)
+        res.status(500).json({error: "Internal Server Error"})
+    }
+}
+
+const encryptPassword = async (password) => {
+    const salt = await bcrypt.genSalt(10)
+    const hashedPassword = await bcrypt.hash(password, salt)
 }
