@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser'
 import userRoutes from './routes/user.routes.js'
 import {v2 as cloudinary } from 'cloudinary' // used for uploading files (images & vidoes)
 import postRoutes from './routes/post.routes.js'
+import notifications from './routes/notification.routes.js'
 
 dotenv.config()
 
@@ -26,6 +27,7 @@ app.use(cookieParser()) // to get our cookie for protected routes
 app.use('/api/auth', authroutes)
 app.use('/api/users', userRoutes)
 app.use('/api/posts', postRoutes)
+app.use('/api/notification', notifications)
 
 app.listen(port, () => {
     console.log(`Server is listening on port ${port}`)
