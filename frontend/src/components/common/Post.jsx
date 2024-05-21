@@ -8,7 +8,9 @@ import { Link } from "react-router-dom";
 
 const Post = ({ post }) => {
   const [comment, setComment] = useState("");
-  const postOwner = post.user;
+  // console.log(post);
+
+  const postOwner = post.user
   const isLiked = false;
 
   const isMyPost = true;
@@ -23,7 +25,7 @@ const Post = ({ post }) => {
     e.preventDefault();
   };
 
-  const handleLikePost = () => {};
+  const handleLikePost = () => { };
 
   return (
     <>
@@ -39,7 +41,7 @@ const Post = ({ post }) => {
         <div className="flex flex-col flex-1">
           <div className="flex gap-2 items-center">
             <Link to={`/profile/${postOwner.username}`} className="font-bold">
-              {postOwner.fullName}
+              {postOwner.fullname}
             </Link>
             <span className="text-gray-700 flex gap-1 text-sm">
               <Link to={`/profile/${postOwner.username}`}>
@@ -110,7 +112,7 @@ const Post = ({ post }) => {
                         <div className="flex flex-col">
                           <div className="flex items-center gap-1">
                             <span className="font-bold">
-                              {comment.user.fullName}
+                              {comment.user.fullname}
                             </span>
                             <span className="text-gray-700 text-sm">
                               @{comment.user.username}
