@@ -44,7 +44,7 @@ const CreatePost = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    createPost()
+    createPost({text, img})
   };
 
   const handleImgChange = (e) => {
