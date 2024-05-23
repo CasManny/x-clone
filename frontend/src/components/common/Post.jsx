@@ -5,85 +5,117 @@ import { FaRegBookmark } from "react-icons/fa6";
 import { FaTrash } from "react-icons/fa";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { toast } from 'react-hot-toast'
-import LoadingSpinner from './LoadingSpinner'
-
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
+import LoadingSpinner from "./LoadingSpinner";
+import { formatPostDate } from "../../utils/date";
 
 const Post = ({ post }) => {
   const [comment, setComment] = useState("");
-  const { data: authUser } = useQuery({ queryKey: ['authUser'] }) // get the authenticated User
-  const queryClient = useQueryClient()
-  const postOwner = post.user
-  const isLiked = post.likes.includes(authUser._id)
+  const { data: authUser } = useQuery({ queryKey: ["authUser"] }); // get the authenticated User
+  const queryClient = useQueryClient();
+  const postOwner = post.user;
+  const isLiked = post.likes.includes(authUser._id);
 
-  const isMyPost = authUser._id === post.user._id
+  const isMyPost = authUser._id === post.user._id;
   const { mutate: deletePost, isPending } = useMutation({
     mutationFn: async () => {
       try {
         const res = await fetch(`/api/posts/${post._id}`, {
-          method: "DELETE"
-        })
-        const data = await res.json()
+          method: "DELETE",
+        });
+        const data = await res.json();
 
-        if(!res.ok) throw new Error(data.error || "Something went wrong")
+        if (!res.ok) throw new Error(data.error || "Something went wrong");
       } catch (error) {
-        throw new Error(error)
+        throw new Error(error);
       }
     },
     onSuccess: () => {
-      toast.success("Post deleted successfully")
+      toast.success("Post deleted successfully");
       // invalidate the query to refresh the data
-      queryClient.invalidateQueries({queryKey: ['posts']})
-    }
-  })
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+  });
   const { mutate: likePost, isPending: isLiking } = useMutation({
     mutationFn: async () => {
       try {
         const res = await fetch(`/api/posts/like/${post._id}`, {
-          method: "POST"
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || "Something went wrong!")
-        return data
+          method: "POST",
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Something went wrong!");
+        return data;
       } catch (error) {
-        throw new Error(error)
+        throw new Error(error);
       }
     },
     onSuccess: (updatedLikes) => {
-      toast.success("Post Liked successfully")
       // this is not the best user experience because it will refresh the whole posts. so a solution is caching
       // queryClient.invalidateQueries({queryKey: ['posts']})
-      // instead we will update the cache 
-      queryClient.setQueryData(['posts'], (oldData) => {
-        return oldData.map(p => {
+      // instead we will update the cache
+      queryClient.setQueryData(["posts"], (oldData) => {
+        return oldData.map((p) => {
           if (p._id === post._id) {
-            return {...p, likes: updatedLikes}
+            return { ...p, likes: updatedLikes };
           }
-          return p
-        })
-      })
+          return p;
+        });
+      });
     },
     onError: () => {
-      toast.error(error.message)
-    }
-  })
+      toast.error(error.message);
+    },
+  });
 
+  const { mutate: commentPost, isPending: isCommenting } = useMutation({
+    mutationFn: async () => {
+      try {
+        const res = await fetch(`/api/posts/comment/${post._id}`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ text: comment }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Something went wrong");
+        return data;
+      } catch (error) {
+        throw new Error(error);
+      }
+    },
+    onSuccess: (comments) => {
+      toast.success("commented successfully!");
+      setComment("");
+      queryClient.setQueryData(["posts"], (oldData) => {
+        return oldData.map((p) => {
+          if (p._id === post._id) {
+            return { ...p, comments: comments };
+          }
+          return p;
+        });
+      });
+    },
+  });
 
-  const formattedDate = "1h";
+  const formattedDate = formatPostDate(post.createdAt)
 
-  const isCommenting = false;
-
-  const handleDeletePost = () => { deletePost() };
+  const handleDeletePost = () => {
+    deletePost();
+  };
 
   const handlePostComment = (e) => {
     e.preventDefault();
+    if (isCommenting) return;
+    commentPost();
+
   };
 
   const handleLikePost = () => {
     if (isLiking) return;
-    likePost()
-   };
+    likePost();
+  };
 
   return (
     <>
@@ -101,7 +133,7 @@ const Post = ({ post }) => {
             <Link to={`/profile/${postOwner.username}`} className="font-bold">
               {postOwner.fullname}
             </Link>
-            <span className="text-gray-700 flex gap-1 text-sm">
+            <span className="text-gray-400 flex gap-1 text-sm">
               <Link to={`/profile/${postOwner.username}`}>
                 @{postOwner.username}
               </Link>
