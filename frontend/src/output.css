@@ -2592,6 +2592,10 @@ input.tab:checked + .tab-content,
   width: 100%;
 }
 
+.w-0 {
+  width: 0px;
+}
+
 .max-w-52 {
   max-width: 13rem;
 }
@@ -3058,6 +3062,10 @@ input.tab:checked + .tab-content,
 
   .md\:w-full {
     width: 100%;
+  }
+
+  .md\:w-64 {
+    width: 16rem;
   }
 
   .md\:flex-\[2_2_0\] {
