@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { toast } from 'react-hot-toast'
 
 import Posts from "../../components/common/Posts";
 import ProfileHeaderSkeleton from "../../components/skeletons/ProfileHeaderSkeleton";
 import EditProfileModal from "./EditProfileModal";
+import useFollow from '../../hooks/UseFollow'
 
 // import { POSTS } from "../../utils/db/dummy";
 
@@ -11,17 +13,20 @@ import { FaArrowLeft } from "react-icons/fa6";
 import { IoCalendarOutline } from "react-icons/io5";
 import { FaLink } from "react-icons/fa";
 import { MdEdit } from "react-icons/md";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatMemberSinceDate } from "../../utils/date";
+import UseUpdateUserProfile from "../../hooks/UseUpdateUserProfile";
 
 const ProfilePage = () => {
   const [coverImg, setCoverImg] = useState(null);
   const [profileImg, setProfileImg] = useState(null);
   const [feedType, setFeedType] = useState("posts");
   const { username } = useParams()
-
+  const {followUnfollow, isPending } = useFollow()
+ 
   const coverImgRef = useRef(null);
   const profileImgRef = useRef(null);
+  const queryClient = useQueryClient()
 
 
   const { data: user, isLoading, refetch, isRefetching } = useQuery({
@@ -37,10 +42,14 @@ const ProfilePage = () => {
       }
     }
   })
-  console.log(user)
   const { data: authUser} = useQuery({queryKey: ['authUser']})
 
   const isMyProfile = user?._id === authUser._id
+  const amIFollowing = authUser?.following.includes(user?._id)
+
+  const { updateUser, isUpdatingProfile} = UseUpdateUserProfile()
+
+
 
   useEffect(() => {
     refetch()
@@ -135,21 +144,27 @@ const ProfilePage = () => {
                 </div>
               </div>
               <div className="flex justify-end px-4 mt-5">
-                {isMyProfile && <EditProfileModal />}
+                {isMyProfile && <EditProfileModal authUser={authUser} />}
                 {!isMyProfile && (
                   <button
                     className="btn btn-outline rounded-full btn-sm"
-                    onClick={() => alert("Followed successfully")}
+                    onClick={() => followUnfollow(user?._id)}
                   >
-                    Follow
+                    {isPending && "Loading..."}
+                    {!isPending && amIFollowing && "Unfollow"}
+                    {!isPending && !amIFollowing && "Follow"}
                   </button>
                 )}
                 {(coverImg || profileImg) && (
                   <button
                     className="btn btn-primary rounded-full btn-sm text-white px-4 ml-2"
-                    onClick={() => alert("Profile updated successfully")}
+                    onClick={ async () => {
+                      await updateUser({ coverImg, profileImg })
+                      setCoverImg(null)
+                      setProfileImg(null)
+                    }}
                   >
-                    Update
+                    {isUpdatingProfile ? "Updating..." : "Update"}
                   </button>
                 )}
               </div>
