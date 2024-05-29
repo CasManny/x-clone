@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 
 import XSvg from "../../../components/svgs/X";
@@ -18,6 +18,8 @@ const SignUpPage = () => {
     fullname: "",
     password: "",
   });
+
+  const queryClient = useQueryClient()
 
   // useMutation() use to manipulate data while using react query
   // useQuery() use to fetch data
@@ -43,7 +45,9 @@ const SignUpPage = () => {
       }
     },
     onSuccess: () => {
-      toast.success("Account created Successfully!")
+      toast.success("Account created Successfully!"),
+      queryClient.invalidateQueries({queryKey: ['authUser']})
+      
     }
   })
 
