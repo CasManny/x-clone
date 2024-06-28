@@ -5,25 +5,26 @@ import Posts from "../../components/common/Posts";
 import ProfileHeaderSkeleton from "../../components/skeletons/ProfileHeaderSkeleton";
 import EditProfileModal from "./EditProfileModal";
 
-import { POSTS } from "../../utils/db/dummy";
 
 import { FaArrowLeft } from "react-icons/fa6";
 import { IoCalendarOutline } from "react-icons/io5";
 import { FaLink } from "react-icons/fa";
 import { MdEdit } from "react-icons/md";
-import { useQuery } from "@tanstack/react-query";
+import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatMemberSinceDate } from "../../utils/date";
 
-import useUpdateUserProfile from '../../hooks/UseUpdateUserProfile'
-import useFollow from '../../hooks/UseFollow'
+import useFollow from "../../hooks/UseFollow";
+import toast from "react-hot-toast";
+import useUpdateUserPhotos from '../../hooks/useUpdatePhotos'
 
-const ProfilePage = () => {
+const ProfilePage =  () => {
   const [coverImg, setCoverImg] = useState(null);
   const [profileImg, setProfileImg] = useState(null);
   const [feedType, setFeedType] = useState("posts");
 
   const coverImgRef = useRef(null);
   const profileImgRef = useRef(null);
+
 
   const { username } = useParams();
 
@@ -51,7 +52,9 @@ const ProfilePage = () => {
     },
   });
 
-  const { isUpdatingProfile, updateProfile } = useUpdateUserProfile();
+  const userPosts = useQuery({ queryKey: ["posts"] });
+  const { updateUserPhotos, isUpdatingUserPhotos } = useUpdateUserPhotos();
+
 
   const isMyProfile = authUser._id === user?._id;
   const memberSinceDate = formatMemberSinceDate(user?.createdAt);
@@ -62,16 +65,20 @@ const ProfilePage = () => {
     if (file) {
       const reader = new FileReader();
       reader.onload = () => {
-        state === "coverImg" && setCoverImg(reader.result);
-        state === "profileImg" && setProfileImg(reader.result);
+        state === 'profileImg' && setProfileImg(reader.result)
+        state === 'coverImg' && setCoverImg(reader.result)
       };
       reader.readAsDataURL(file);
     }
   };
 
+
+
   useEffect(() => {
     refetch();
   }, [username, refetch]);
+
+
 
   return (
     <>
@@ -90,9 +97,12 @@ const ProfilePage = () => {
                 </Link>
                 <div className="flex flex-col">
                   <p className="font-bold text-lg">{user?.fullname}</p>
-                  <span className="text-sm text-slate-500">
-                    {POSTS?.length} posts
-                  </span>
+                  {userPosts.data && (
+                    <span className="text-sm text-slate-500">
+                      {userPosts.data.length}{" "}
+                      {userPosts.data.length > 1 ? "posts" : "post"}
+                    </span>
+                  )}
                 </div>
               </div>
               {/* COVER IMG */}
@@ -162,12 +172,12 @@ const ProfilePage = () => {
                   <button
                     className="btn btn-primary rounded-full btn-sm text-white px-4 ml-2"
                     onClick={async () => {
-                      await updateProfile({ coverImg, profileImg });
-                      setProfileImg(null);
-                      setCoverImg(null);
+                      await updateUserPhotos({ coverImg, profileImg });
+                      setCoverImg("")
+                      setProfileImg("")
                     }}
                   >
-                    {isUpdatingProfile ? "Updating..." : "Update"}
+                    {isUpdatingUserPhotos ? "updating" : "update"}
                   </button>
                 )}
               </div>
@@ -187,7 +197,7 @@ const ProfilePage = () => {
                       <>
                         <FaLink className="w-3 h-3 text-slate-500" />
                         <a
-                          href="https://youtube.com/@asaprogrammer_"
+                          href={"#"}
                           target="_blank"
                           rel="noreferrer"
                           className="text-sm text-blue-500 hover:underline"
