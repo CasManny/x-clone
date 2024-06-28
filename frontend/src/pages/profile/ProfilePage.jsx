@@ -75,6 +75,7 @@ const ProfilePage =  () => {
 
 
   useEffect(() => {
+    console.log(user)
     refetch();
   }, [username, refetch]);
 
